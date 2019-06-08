@@ -1,0 +1,69 @@
+---
+title: "Tranfer Analysis"
+author: "Devansh Chandgothia"
+date: "2/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+
+```{r}
+library(tidyr)     # a package that for tidying data
+library(ggplot2)   # a package for plotting
+library(readr)     # a package for parsing data
+library(dplyr)     # a package for manipulating data
+library(rvest)
+library(stringr)
+library(readr)
+
+# Use the list of most expensive association football transfers from wikipedia to find out the trends in football tranfers
+
+# Parsing the page to obtain an HTML document
+transfersParse<- read_html("https://en.wikipedia.org/wiki/List_of_most_expensive_association_football_transfers")
+
+# Extracting a table from this web page 
+transfersTables <- html_nodes(transfersParse, "table")
+head(transfersTables)
+
+# There are six tables in this document but we need the first one
+# Selecting the first table
+transfers <- html_table(transfersTables, header = TRUE, fill = TRUE)[[1]]
+str(transfers)
+
+# Removing Reference column because it contains ineffectual information
+transfers_noref <- select(transfers, -"Reference")
+head(transfers_noref)
+
+# Coverting the column Fee(€ mln) to numeric by remving the characters that indicate footnotes, the currency symbol, and the commas in the numbers 
+transfers_noref$`Fee(€ mln)`<- str_replace_all(transfers_noref$`Fee(€ mln)`, "\\[[^]]+\\]", "")
+out <- str_replace_all(transfers_noref$`Fee(€ mln)`, "\\€|,", "" )
+head(out)
+transfers_noref$`Fee(€ mln)` <- as.numeric(out)
+
+# Coverting the column Fee(£ mln) to numeric by remving the characters that indicate footnotes, the currency symbol, and the commas in the numbers 
+transfers_noref$`Fee(£ mln)`<- str_replace_all(transfers_noref$`Fee(£ mln)`, "\\[[^]]+\\]", "")
+out <- str_replace_all(transfers_noref$`Fee(£ mln)`, "\\£|,", "" )
+head(out)
+transfers_noref$`Fee(£ mln)` <- as.numeric(out)
+
+# Coverting the column Year to numeric by remving the characters that indicate footnotes
+transfers_noref$Year<- str_replace_all(transfers_noref$Year, "\\[[^]]+\\]", "")
+
+# Changing the name of the column Fee(£ mln) to Fee(£) to be clear and precise
+names(transfers_noref)[names(transfers_noref) == 'Fee(£ mln)'] <- 'Fee(£)'
+
+# Changing the positions of all Strikers to Forward because those terms are very inter-changable
+transfers_noref$Position[transfers_noref$Position == "Striker"] <- "Forward"
+head(transfers_noref)
+
+# Creating a scatterplot with year and the Fee(£) to compare the tranfers fees over different years
+ggplot(data= transfers_noref) + geom_point(mapping = aes(x = Year, y=`Fee(£)`, color=Position))
+
+
+#In general, we see that the tranfer fees for every position has steadily increased over the years (except Neymar and Mbappe that are outliers). This is seen by the fact that more points are grouped on the right side of the graph that indicates that more expensive tranfers have happened in the recent years.
+#Another trend that we observe is that forwards and midfielders are usually signed for a higher fee than defenders and goalkeepers. This is seen by the fact that in a particular year, a forward or a midfielder is always signed for the highest tranfer fee. 
+
+```
